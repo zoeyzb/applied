@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ApplyPilot Web</title>
+  <link rel="stylesheet" href="/static/styles.css"/>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand"><span class="logo">A</span><div><b>ApplyPilot</b><small>Web Console</small></div></div>
+    <nav>
+      <button class="nav active" data-view="dashboard">⌂ Dashboard</button>
+      <button class="nav" data-view="onboarding">◇ My profile</button>
+      <button class="nav" data-view="jobs">▦ Jobs</button>
+      <button class="nav" data-view="runner">▶ Automation</button>
+      <button class="nav" data-view="setup">⚙ System</button>
+    </nav>
+    <div class="aside-foot"><span id="readyDot" class="dot"></span><span id="readyText">Checking setup…</span></div>
+  </aside>
+
+  <main>
+    <header>
+      <div><h1 id="title">Dashboard</h1><p id="subtitle">Your autonomous job-search command center.</p></div>
+      <button class="primary" onclick="showView('runner')">Run ApplyPilot</button>
+    </header>
+
+    <section id="dashboard" class="view active">
+      <div class="stats" id="stats"></div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Application pipeline</h2><p>Live from ApplyPilot’s SQLite database.</p></div><button onclick="loadAll()">Refresh</button></div>
+        <div class="pipeline" id="pipeline"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Recent jobs</h2><p>Latest jobs found by the real ApplyPilot engine.</p></div><button onclick="showView('jobs')">View all</button></div>
+        <div id="recentJobs"></div>
+      </div>
+    </section>
+
+    <section id="onboarding" class="view">
+      <div class="panel">
+        <div class="panel-head"><div><h2>One-time setup</h2><p>These fields map directly into ApplyPilot’s profile.json.</p></div><button class="primary" onclick="saveProfile()">Save profile</button></div>
+        <div id="profileForm"></div>
+      </div>
+      <div class="panel">
+        <h2>Résumé</h2><p>Upload the résumé ApplyPilot should tailor from.</p>
+        <div class="upload"><input id="resumeFile" type="file" accept=".pdf,.txt"/><button onclick="uploadResume()">Upload</button><span id="resumeStatus"></span></div>
+      </div>
+      <div class="panel">
+        <h2>Search preferences</h2>
+        <div class="grid3">
+          <label>Job query<input id="searchQuery" placeholder="software engineer"/></label>
+          <label>Location<input id="searchLocation" placeholder="United States"/></label>
+          <label>Minimum fit score<input id="minScore" type="number" min="1" max="10" value="7"/></label>
+        </div>
+        <label>Boards<input id="searchSites" value="indeed, linkedin, glassdoor, zip_recruiter, google"/></label>
+      </div>
+      <div class="panel">
+        <h2>AI / CAPTCHA keys</h2><p>Saved into ~/.applypilot/.env. Leave blank to keep existing values.</p>
+        <div class="grid2">
+          <label>Gemini API key<input id="gemini" type="password" autocomplete="off"/></label>
+          <label>OpenAI API key<input id="openai" type="password" autocomplete="off"/></label>
+          <label>LLM model<input id="llmModel" placeholder="optional"/></label>
+          <label>CapSolver API key<input id="capsolver" type="password" autocomplete="off"/></label>
+        </div>
+      </div>
+    </section>
+
+    <section id="jobs" class="view">
+      <div class="toolbar">
+        <input id="jobSearch" placeholder="Search title, location, site…" oninput="loadJobs()"/>
+        <select id="stageFilter" onchange="loadJobs()">
+          <option value="all">All stages</option><option value="found">Found</option><option value="enriched">Enriched</option>
+          <option value="scored">Scored</option><option value="tailored">Tailored</option><option value="cover">Cover letter</option>
+          <option value="ready">Ready to apply</option><option value="applied">Applied</option><option value="failed">Failed</option>
+        </select>
+      </div>
+      <div class="panel"><div id="jobsTable"></div></div>
+    </section>
+
+    <section id="runner" class="view">
+      <div class="runner-grid">
+        <div class="panel">
+          <h2>1. Find + prepare jobs</h2>
+          <p>Runs discover, enrich, score, tailor, and cover-letter stages.</p>
+          <div class="grid2"><label>Workers<input id="runWorkers" type="number" min="1" max="16" value="4"/></label><label>Minimum score<input id="runMinScore" type="number" min="1" max="10" value="7"/></label></div>
+          <label class="check"><input id="runDry" type="checkbox"/> Dry run</label>
+          <button class="primary wide" onclick="runPipeline()">Find & prepare jobs</button>
+        </div>
+        <div class="panel">
+          <h2>2. Apply automatically</h2>
+          <p>Launches ApplyPilot’s browser workers and submits applications.</p>
+          <div class="grid2"><label>Browser workers<input id="applyWorkers" type="number" min="1" max="8" value="2"/></label><label>Specific URL (optional)<input id="applyUrl" placeholder="https://…"/></label></div>
+          <label class="check"><input id="applyDry" type="checkbox"/> Fill forms but do not submit</label>
+          <label class="check"><input id="applyHeadless" type="checkbox"/> Headless browser</label>
+          <label class="check"><input id="applyContinuous" type="checkbox"/> Keep polling for new jobs</label>
+          <button class="primary wide" onclick="runApply()">Start auto-apply</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Live run</h2><p id="runState">No active run.</p></div><button class="danger" onclick="stopRun()">Stop</button></div>
+        <pre id="log">Choose an action above.</pre>
+      </div>
+    </section>
+
+    <section id="setup" class="view">
+      <div class="panel"><div class="panel-head"><div><h2>System doctor</h2><p>What is installed and what ApplyPilot still needs.</p></div><button onclick="loadDoctor()">Re-check</button></div><div id="doctor"></div></div>
+      <div class="panel"><h2>How this website works</h2><p>This UI does not replace ApplyPilot. It controls the original CLI and reads/writes its native ~/.applypilot files and database, so CLI and website stay synchronized.</p></div>
+    </section>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
